@@ -1,25 +1,43 @@
 # Reconcile Subtitles / 双字幕比对校订
 
-Compare two timestamped subtitle files or speech recognition transcripts in the same language for the same recording. The skill aligns their timelines, selects a base draft, fixes supported errors, recovers missing lines, and flags unresolved differences.
+A Codex skill for reconciling two same-language subtitle drafts. On Windows, it can also generate independent drafts with Gemini Flash and Purfview Faster Whisper XXL, then use Gemini Hydrogen for targeted audio review. It delivers a reconciled SRT and a CSV comparison with unresolved readings marked.
 
-比较同一段音视频的两份带时间码的同语种字幕或语音识别稿。对齐时间轴后选定底稿，校正有依据的错听、补回漏句，并标记证据不足的分歧。
+这是一个用于比对并校订同一段音视频的两份同语种字幕的 Codex 技能。Windows 上也可从音视频开始，先用 Gemini Flash 与 Purfview Faster Whisper XXL 分别听写，再用 Gemini Hydrogen 复听待核片段。交付 SRT 和 CSV 对照表，保留证据不足的分歧。
 
-## Install / 安装
+## 安装 / Install
 
-Copy the entire `reconcile-subtitles` folder into a skills directory supported by your agent. Keep `SKILL.md` at the folder root. `agents/openai.yaml` provides optional UI metadata for Codex. The package includes no executable scripts and requires no bundled dependencies.
+将整个 `reconcile-subtitles` 目录放进 Codex 的技能目录，例如 `~/.codex/skills/`。保持 `SKILL.md` 在该目录根部。以下命令在技能目录下运行。
 
-将整个 `reconcile-subtitles` 文件夹复制到你的智能体所支持的技能目录。将 `SKILL.md` 保留在技能根目录；`agents/openai.yaml` 是 Codex 的可选界面配置。包内没有可执行脚本，也没有附带依赖。
+Copy the entire folder into your Codex skills directory. Run the setup commands from the installed skill directory.
 
-## Use / 使用
+```powershell
+Copy-Item workflow-config.example.json workflow-config.json
+```
 
-Provide both input files. A matching video or audio file is optional. The skill can check disputed lines against the recording when local media is accessible and the agent can listen to it. It does not upload media to an external transcription service without authorization.
+在本地 `workflow-config.json` 中把 `work_root` 填成技能目录之外的可写绝对路径。Windows JSON 路径可用正斜杠。任务中间文件和最终输出都保存在该根目录的本片子目录。**只比对两份现成字幕时，设置这一个字段即可，无需 Python、音频工具或 API Key。**
 
-提供两份输入字幕；如需复核原声，可以附上对应的音视频。环境无法复听时，技能仍可完成双稿校订并标记疑点。未经授权，不将音视频上传至外部转录服务。
+Set `work_root` to a writable absolute path. Comparing two existing subtitle files requires only this field. Each task writes its work and deliverables into its own directory under this root.
 
-> Use $reconcile-subtitles to compare `sample.a.srt` and `sample.b.srt`. Keep the dialogue in its original language and flag any uncertain lines.
->
-> 用 $reconcile-subtitles 校订 `sample.a.srt` 和 `sample.b.srt`，保留对白的原语种，并标出无法确认的句子。
+> 用 $reconcile-subtitles 校订 `draft-a.srt` 和 `draft-b.srt`，保留原语种，并标记仍需核对的对白。
 
-By default, you get a reconciled SRT and a CSV report of changes and open questions. The original files are kept intact.
+## 音视频模式 / Audio and video mode
 
-默认交付校订后的 SRT 和记录改动与待核问题的 CSV 对照表，保留原始文件。
+1. 在 Windows 安装 Python 3.12，并让 [FFmpeg 和 ffprobe](https://ffmpeg.org/download.html) 可从 PATH 调用。下载安装 [Purfview Faster Whisper XXL](https://github.com/Purfview/whisper-standalone-win) 及所选模型。随包预设使用 CUDA、float16、large-v2 和内置 pyannote_v3。用户可编辑 `config/` 中的设备和模型参数以适配本机。
+2. 在 `workflow-config.json` 填写 `xxl_executable` 和 `xxl_models` 的绝对路径。后者指向包含 `faster-whisper-large-v2/model.bin` 的模型父目录。
+3. 准备本地 Python 环境和 Gemini 配置。
+
+```powershell
+py -3.12 -m venv .venv
+& ./.venv/Scripts/python.exe -m pip install -r requirements.txt
+Copy-Item gemini-config.example.json gemini-config.json
+```
+
+在当前环境中提供 `GEMINI_API_KEY`，或把 Key 填入已被 Git 忽略的本地 `gemini-config.json`。按[听写配置](references/transcription.md)为影片语种登记一个兼容的本地 ONNX CTC 校时模型，再用 `--check` 检查依赖和模型。
+
+Install Python 3.12, FFmpeg, ffprobe, and XXL with a compatible Whisper model. Set the XXL paths, install the Python dependencies, configure your Gemini credential, and register a language-appropriate ONNX CTC alignment model. See the [transcription reference](references/transcription.md) and the [review reference](references/audio-review.md) for commands.
+
+> 用 $reconcile-subtitles 处理 `sample.mkv`，按原语种独立听写两份字幕，并对双稿比对后的待核片段进行复听。
+
+Gemini 听写和复听会把所选音频发送到 Google Gemini。原语种整理与歌词识别会发送字幕文字。调用前按本次任务授权确认传输范围。复听复用同一个 API 项目和 Key，默认模型为 `gemini-4-hydrogen`。
+
+Python 依赖、第三方引擎和模型各自依据其上游条款提供。发布包包含技能说明、调用脚本和空配置样例。第三方二进制、模型权重、真实凭据和示例影片均由使用者自行准备。

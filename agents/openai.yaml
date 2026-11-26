@@ -1,4 +1,4 @@
 interface:
   display_name: "双字幕比对校订"
-  short_description: "比对同一影片的两份字幕，纠正错听、补上漏句并记录待核内容"
-  default_prompt: "用 $reconcile-subtitles 校订我提供的两份字幕。"
+  short_description: "双稿校订，支持本地音视频听写和待核片段复听，交付字幕和对照表"
+  default_prompt: "用 $reconcile-subtitles 校订字幕或听写我提供的本地音视频，有原声时复听待核片段，交付字幕和对照表。"

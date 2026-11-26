@@ -1,0 +1,6 @@
+{
+  "api_base_url": "https://generativelanguage.googleapis.com/v1beta/openai/",
+  "api_key": "",
+  "model": "gemini-3.8-flash",
+  "reasoning_effort": "none"
+}

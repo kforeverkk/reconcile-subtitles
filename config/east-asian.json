@@ -1,0 +1,32 @@
+{
+  "model": "large-v2",
+  "device": "cuda",
+  "compute_type": "float16",
+  "vad_method": "pyannote_v3",
+  "vad_device": "cpu",
+  "extra_args": [
+    "--vad_threshold",
+    "0.35",
+    "--vad_min_speech_duration_ms",
+    "100",
+    "--vad_min_silence_duration_ms",
+    "800",
+    "--vad_speech_pad_ms",
+    "600",
+    "--hallucination_silence_threshold",
+    "2"
+  ],
+  "postprocess": {
+    "adjust_starts": true,
+    "merge_short_cues": true,
+    "split_long_cues": true,
+    "fix_short_duration": true,
+    "line_width": 42,
+    "max_cue_seconds": 7,
+    "min_display_ms": 800,
+    "start_search_ms": 300,
+    "start_lead_ms": 80,
+    "merge_gap_ms": 300
+  },
+  "subtitle_preset": "standard_asia"
+}
