@@ -38,6 +38,12 @@ Install Python 3.12, FFmpeg, ffprobe, and XXL with a compatible Whisper model. S
 
 > 用 $reconcile-subtitles 处理 `sample.mkv`，按原语种独立听写两份字幕，并对双稿比对后的待核片段进行复听。
 
-Gemini 听写和复听会把所选音频发送到 Google Gemini。原语种整理与歌词识别会发送字幕文字。调用前按本次任务授权确认传输范围。复听复用同一个 API 项目和 Key，默认模型为 `gemini-4-hydrogen`。
+### Gemini 模型与发送内容 / Models and data sent
+
+- **首轮听写**默认使用 `gemini-3.8-flash`，按分段发送所选音轨。首轮模型可在 `gemini-config.json` 的 `model` 字段中配置。
+- **待核复听**在双稿比对后使用 `gemini-4-hydrogen`，仅发送能定位到原声的待核片段。两阶段可复用同一个 Google Gemini API 项目和 Key。
+- **原语种整理与歌词识别**发送字幕文字。默认沿用首轮模型，也可以通过 `text_model` 单独配置。调用前按本次任务授权确认传输范围。
+
+The first Gemini transcription pass defaults to `gemini-3.8-flash`. Targeted audio review uses `gemini-4-hydrogen` only for unresolved clips after comparing the two drafts. Text cleanup and lyric detection send subtitle text and default to the first-pass model.
 
 Python 依赖、第三方引擎和模型各自依据其上游条款提供。发布包包含技能说明、调用脚本和空配置样例。第三方二进制、模型权重、真实凭据和示例影片均由使用者自行准备。
