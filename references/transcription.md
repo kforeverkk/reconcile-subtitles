@@ -6,20 +6,20 @@ Gemini 的听写音频、原语种块整理文字和歌词分类文字发送至�
 
 ## 工具和任务目录
 
-- 先按 [README](../README.md) 配置 Python、FFmpeg、XXL 和 Gemini。以下命令从技能根目录执行。接口配置为本地 `gemini-config.json`，主入口为 `scripts/transcribe_video.py`。
+- 先按 [首次使用与依赖检查](setup.md) 配置 Python、FFmpeg、XXL 和 Gemini。以下命令从技能根目录执行。接口配置为本地 `gemini-config.json`，主入口为 `scripts/transcribe_video.py`。
 - XXL 引擎和模型路径来自本地 `workflow-config.json`。亚洲参数为 `config/east-asian.json`，欧美参数为 `config/western.json`。两组预设均使用 large-v2 与内置 `pyannote_v3`。
 - 每次任务在 `workflow-config.json` 的 `work_root` 下生成本片唯一子目录。公共音轨放入 `shared/audio.wav`，选轨及原片起点记录在 `shared/preparation.json`。
 - Gemini 各阶段字幕在 `gemini` 中，最终听写稿为 `gemini\processed.srt`。请求切片在 `gemini\work\chunks`，窗口恢复记录为 `gemini\work\window-*.json`，校时变化在 `gemini\timing.json`。
 - XXL 最终听写稿为 `xxl\processed.srt`，原始 SRT/JSON 和日志位于 `xxl\attempt-*\engine` 及对应日志文件。最终校订字幕和 CSV 放入同一任务的 `reconciled` 子目录。
 
-FFmpeg 和 ffprobe 由 PATH 或技能目录下的 `bin/` 提供。公共音轨只抽取一次，两路复用相同的 16 kHz 单声道 16 位 PCM WAV。抽轨保留时间戳空档，局部片段记录原片起点。两路各自断句、校时，输出时间均对应原片坐标。
+FFmpeg 和 ffprobe 优先从配置的 `ffmpeg_bin` 调用，也可由 PATH 或技能目录下已有的 `bin/` 提供。公共音轨只抽取一次，两路复用相同的 16 kHz 单声道 16 位 PCM WAV。抽轨保留时间戳空档，局部片段记录原片起点。两路各自断句、校时，输出时间均对应原片坐标。
 
 ## 调用和恢复
 
 使用 PowerShell 7。先检查工具、查看音轨并确定原声语种。单音轨自动选择，多音轨且用户未指定时请用户选择容器全局索引。
 
 ```powershell
-$python = './.venv/Scripts/python.exe'
+$python = (Get-Content -LiteralPath ./workflow-config.json -Raw | ConvertFrom-Json).python_executable
 & $python -X utf8 -B ./scripts/transcribe_video.py --check --language ko
 & $python -X utf8 -B ./scripts/transcribe_video.py 'sample.mkv' --list-tracks
 & $python -X utf8 -B ./scripts/transcribe_video.py 'sample.mkv' --language ko --audio-stream 1

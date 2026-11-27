@@ -1,5 +1,7 @@
 {
   "work_root": "",
+  "python_executable": "",
+  "ffmpeg_bin": "",
   "xxl_executable": "",
   "xxl_models": ""
 }

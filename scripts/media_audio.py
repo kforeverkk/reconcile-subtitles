@@ -1,5 +1,6 @@
 """Shared audio preparation, reused from the tested XXL runner."""
 import json
+import os
 from pathlib import Path
 import subprocess
 from contextlib import contextmanager
@@ -29,6 +30,19 @@ def workflow_config(root):
         raise ValueError('work_root 必须位于技能目录之外，避免任务资料进入发布仓库')
     config['work_root'] = str(work_root)
     return config
+
+
+def configure_ffmpeg(workflow):
+    """Expose an explicitly configured FFmpeg installation to child processes."""
+    configured = workflow.get('ffmpeg_bin')
+    if not configured:
+        return
+    directory = Path(configured).expanduser()
+    if not directory.is_absolute() or not all(
+        (directory / filename).is_file() for filename in ('ffmpeg.exe', 'ffprobe.exe')
+    ):
+        raise ValueError('ffmpeg_bin 必须是同时包含 ffmpeg.exe 和 ffprobe.exe 的绝对路径')
+    os.environ['PATH'] = str(directory.resolve()) + os.pathsep + os.environ.get('PATH', '')
 
 
 @contextmanager

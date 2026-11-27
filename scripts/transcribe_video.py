@@ -16,7 +16,7 @@ import time
 import uuid
 from runtime_env import configure_runtime
 
-from media_audio import prepare_audio, run, job_lock, task_output_path, workflow_config
+from media_audio import prepare_audio, run, job_lock, task_output_path, workflow_config, configure_ffmpeg
 
 ROOT = Path(__file__).resolve().parents[1]
 configure_runtime(ROOT)
@@ -36,7 +36,7 @@ def branch_environment(root, job):
                TEMP=str(temp), TMP=str(temp), HF_HUB_OFFLINE='1', TRANSFORMERS_OFFLINE='1',
                HF_HOME=str(root/'cache/huggingface'), TORCH_HOME=str(root/'cache/torch'),
                XDG_CACHE_HOME=str(root/'cache'), CUDA_CACHE_PATH=str(root/'cache/cuda'),
-               PATH=str(root/'bin')+os.pathsep+str(root)+os.pathsep+os.environ['PATH'])
+               PATH=os.environ['PATH']+os.pathsep+str(root/'bin')+os.pathsep+str(root))
     for name, relative in {
         'HF_HUB_CACHE':'huggingface/hub', 'HUGGINGFACE_HUB_CACHE':'huggingface/hub',
         'HF_ASSETS_CACHE':'huggingface/assets','HF_XET_CACHE':'huggingface/xet',
@@ -111,6 +111,7 @@ def main():
     parser.add_argument('--gemini-config', type=Path, default=ROOT/'gemini-config.json')
     args = parser.parse_args()
     workflow = workflow_config(ROOT)
+    configure_ffmpeg(workflow)
     work_root = Path(workflow['work_root'])
     if args.job_dir:
         args.job_dir = task_output_path(args.job_dir, work_root)

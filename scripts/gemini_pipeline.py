@@ -14,7 +14,7 @@ from runtime_env import configure_runtime
 
 ROOT = Path(__file__).resolve().parents[1]
 configure_runtime(ROOT)
-os.environ['PATH'] = str(ROOT / 'bin') + os.pathsep + os.environ.get('PATH', '')
+os.environ['PATH'] = os.environ.get('PATH', '') + os.pathsep + str(ROOT / 'bin')
 os.environ.setdefault('HF_HUB_OFFLINE', '1')
 os.environ.setdefault('TRANSFORMERS_OFFLINE', '1')
 
