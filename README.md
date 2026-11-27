@@ -1,44 +1,50 @@
-# Reconcile Subtitles / 双字幕比对校订
+# Reconcile Subtitles · 双字幕比对校订
 
-A Codex skill for reconciling two same-language subtitle drafts. On Windows, it can also generate independent drafts with Gemini Flash and Purfview Faster Whisper XXL, then use Gemini Hydrogen for targeted audio review. It delivers a reconciled SRT and a CSV comparison with unresolved readings marked.
+在 Codex 中校订同一段音视频的两份同语种字幕。技能会对齐时间轴、纠正有依据的错听、补回漏句，并把无法确认的对白标为「待核」。Windows 上也可从本地音视频开始，先生成两份独立听写稿，再校订。
 
-这是一个用于比对并校订同一段音视频的两份同语种字幕的 Codex 技能。Windows 上也可从音视频开始，先用 Gemini Flash 与 Purfview Faster Whisper XXL 分别听写，再用 Gemini Hydrogen 复听待核片段。交付 SRT 和 CSV 对照表，保留证据不足的分歧。
+A Codex skill that reconciles two same-language subtitle drafts and flags unresolved lines. On Windows, it can also generate two independent drafts from local media and review disputed clips. [English quick start](#english-quick-start)
 
-## 安装 / Install
+## 安装并开始
 
-将整个 `reconcile-subtitles` 目录放进 Codex 的技能目录，例如 `~/.codex/skills/`。保持 `SKILL.md` 在该目录根部，然后在 Codex 中调用技能。
+1. 下载或克隆本仓库，将 `reconcile-subtitles` 文件夹放入 Codex 的技能目录，例如 `~/.codex/skills/`。确认 `SKILL.md` 位于该文件夹根目录。
+2. 在 Codex 中调用 `$reconcile-subtitles`，并提供文件路径。可以直接复制下面的示例，换成自己的文件名。
 
-Copy the entire folder into your Codex skills directory and invoke the skill.
+| 你有什么 | 在 Codex 中这样说 | 需要什么 |
+| --- | --- | --- |
+| 两份现成字幕 | 用 `$reconcile-subtitles` 校订 `draft-a.srt` 和 `draft-b.srt`。 | 可写的工作目录 |
+| 两份字幕和同一剪辑的原声 | 用 `$reconcile-subtitles` 校订这两份字幕，再用 `sample.mkv` 复听待核片段。 | Windows、PowerShell 7、Python、Gemini API。需要抽轨时还要有 FFmpeg 和 ffprobe |
+| 一份音频或视频 | 用 `$reconcile-subtitles` 听写 `sample.mkv`，比对双稿并复听待核片段。 | Windows、PowerShell 7、Python 及其依赖、FFmpeg 和 ffprobe、Whisper XXL 及其模型、对应语种的 ONNX 校时模型、Gemini API |
 
-首次使用时，Codex 会请你选择技能目录之外的工作路径，并在 Windows 上检查依赖。缺项会列出来，你可以选择让 Codex 协助安装，或自行安装后提供路径。路径保存在本地 `workflow-config.json`。**只比对两份现成字幕时，有可写的工作目录即可开始。**
+## 第一次使用会发生什么
 
-On first use, Codex asks where to store task files and checks the Windows dependencies. You can ask Codex to install missing tools in locations you choose, or install them yourself and provide their paths. Subtitle-only tasks require only the work directory. See [first-run setup](references/setup.md).
+1. **选择工作目录。** Codex 会请你提供一个位于技能目录之外的可写绝对路径，并保存到本地 `workflow-config.json`。每部影片会在该位置下使用独立任务目录。
+2. **检查依赖。** Windows 上会检查已配置或可发现的 Python、FFmpeg、Whisper XXL、相关模型和 Gemini 配置，并说明哪些缺项会影响当前任务。只比对两份字幕时，确认工作目录后即可开始。
+3. **决定谁来安装。** 如果需要 Codex 帮忙，它会先询问具体安装位置，安装完成后复查。如果选择自行安装，Codex 会等你告知安装完成，再询问实际路径并复查。已验证的工具路径会存到本地配置，供下次使用。
 
-> 用 $reconcile-subtitles 校订 `draft-a.srt` 和 `draft-b.srt`，保留原语种，并标记仍需核对的对白。
+也可以按 [首次使用与依赖检查](references/setup.md) 手动配置。听写依赖和命令见 [双路听写](references/transcription.md)，已有双稿的原声复听见 [待核复听](references/audio-review.md)。
 
-## 音视频模式 / Audio and video mode
+## 听写和复听用什么模型
 
-使用上述引导，也可以手动从 `workflow-config.example.json` 创建配置。在其中填写工作目录、Python 可执行文件、FFmpeg 目录、Purfview Faster Whisper XXL 可执行文件和 Whisper 模型父目录。随包预设使用 CUDA、float16、large-v2 和内置 pyannote_v3，可在 `config/` 中调整设备和模型。用配置的 Python 安装依赖；以下以自选目录中的虚拟环境为例：
+| 阶段 | 模型 | 处理内容 |
+| --- | --- | --- |
+| Gemini 首轮听写 | 默认 `gemini-3.8-flash` | 将所选音轨分段发送到配置的 Gemini 接口。首轮模型可通过 `model` 配置 |
+| 本地首轮听写 | Purfview Faster Whisper XXL | 在本机独立听写同一音轨。随包预设使用 large-v2 和内置 pyannote_v3 |
+| Gemini 稿整理与校时 | 文本默认沿用首轮模型，时间轴由本地 ONNX CTC 校准 | 原语种整理与歌词识别会发送字幕文字。文本模型可用 `text_model` 单独配置 |
+| 双稿比对后的待核复听 | `gemini-4-hydrogen` | 仅向 Google Gemini 发送待核原声片段和转写指令 |
 
-```powershell
-$venv = Read-Host '虚拟环境的安装绝对路径'
-py -3.12 -m venv $venv
-& (Join-Path $venv 'Scripts/python.exe') -m pip install -r requirements.txt
-Copy-Item gemini-config.example.json gemini-config.json
-```
+使用 Google Gemini 官方接口时，首轮听写和复听可共用同一个 API 项目和 Key。调用前按当前任务的授权确认发送范围。Key 可通过环境变量 `GEMINI_API_KEY` 提供，或填入从样例复制的本地 `gemini-config.json`。真实配置由 Git 忽略。第三方工具和模型由使用者安装。
 
-在当前环境中提供 `GEMINI_API_KEY`，或把 Key 填入已被 Git 忽略的本地 `gemini-config.json`。按[听写配置](references/transcription.md)为影片语种登记一个兼容的本地 ONNX CTC 校时模型，再用 `--check` 检查依赖和模型。
+## 输出文件
 
-Install Python 3.12, FFmpeg, ffprobe, and XXL with a compatible Whisper model. Set the XXL paths, install the Python dependencies, configure your Gemini credential, and register a language-appropriate ONNX CTC alignment model. See the [transcription reference](references/transcription.md) and the [review reference](references/audio-review.md) for commands.
+在所选工作目录的本片任务下，打开 `reconciled/`：
 
-> 用 $reconcile-subtitles 处理 `sample.mkv`，按原语种独立听写两份字幕，并对双稿比对后的待核片段进行复听。
+- `<片名>.reconciled.srt` 保存校订后的原语种字幕。
+- `<片名>.comparison.csv` 记录两份原稿、采用的读法、校订依据及仍待核的条目。
 
-### Gemini 模型与发送内容 / Models and data sent
+## English quick start
 
-- **首轮听写**默认使用 `gemini-3.8-flash`，按分段发送所选音轨。首轮模型可在 `gemini-config.json` 的 `model` 字段中配置。
-- **待核复听**在双稿比对后使用 `gemini-4-hydrogen`，仅发送能定位到原声的待核片段。两阶段可复用同一个 Google Gemini API 项目和 Key。
-- **原语种整理与歌词识别**发送字幕文字。默认沿用首轮模型，也可以通过 `text_model` 单独配置。调用前按本次任务授权确认传输范围。
+1. Copy the `reconcile-subtitles` folder into your Codex skills directory and invoke `$reconcile-subtitles` with two subtitle files, two subtitles plus matching media, or one local media file.
+2. On first use, choose a writable work directory outside the skill folder. On Windows, Codex checks dependencies. If you want help installing missing tools, Codex asks where to install them first. If you prefer to install them yourself, tell Codex when you are done, then provide their paths for verification.
+3. For subtitle-only tasks, the work directory is sufficient. Full media transcription uses Gemini 3.8 Flash by default and local Whisper XXL. Gemini 4 Hydrogen reviews only disputed audio clips after the drafts have been compared. The final SRT and CSV are saved in the task’s `reconciled/` directory.
 
-The first Gemini transcription pass defaults to `gemini-3.8-flash`. Targeted audio review uses `gemini-4-hydrogen` only for unresolved clips after comparing the two drafts. Text cleanup and lyric detection send subtitle text and default to the first-pass model.
-
-Python 依赖、第三方引擎和模型各自依据其上游条款提供。发布包包含技能说明、调用脚本和空配置样例。第三方二进制、模型权重、真实凭据和示例影片均由使用者自行准备。
+See the [first-run setup guide](references/setup.md), [transcription guide](references/transcription.md), and [audio review guide](references/audio-review.md).
